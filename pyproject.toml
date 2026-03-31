@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "schema-guard"
+version = "0.2.0"
+description = "Schema compatibility and transfer safety utility for data pipelines"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "chocka.dev" }
+]
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+schema-guard = "schema_guard.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

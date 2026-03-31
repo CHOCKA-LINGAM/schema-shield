@@ -1,0 +1,5 @@
+{
+  "id": { "type": "string", "nullable": false },
+  "amount": { "type": "decimal", "nullable": true },
+  "country": { "type": "string", "nullable": true }
+}

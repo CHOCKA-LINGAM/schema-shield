@@ -1,0 +1,4 @@
+{
+  "id": { "type": "string", "nullable": true },
+  "amount": { "type": "double", "nullable": true }
+}
