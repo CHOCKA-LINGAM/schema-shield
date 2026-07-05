@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional,Dict,TYPE_CHECKING
+from typing import Optional, Dict, TYPE_CHECKING
 from ..core.report import check_schema_transfer, format_result
 
 if TYPE_CHECKING:
@@ -9,46 +9,129 @@ if TYPE_CHECKING:
 try:
     import pyspark
     PYSPARK_AVAILABLE = True
-except:
+except ImportError:
     PYSPARK_AVAILABLE = False
 
-class compareDelta:
 
-    
-    def __init__(self,source_schema:str,target_schema:Optional[str]=None,SparkSession:Optional[SparkSession]=None,return_type:Dict=None):
+class CompareDelta:
+    """
+    Compare schemas of Delta tables using a live SparkSession.
+
+    Parameters
+    ----------
+    source_schema : str
+        Fully-qualified source table name (e.g. ``"catalog.schema.table"``).
+    target_schema : str, optional
+        Fully-qualified target table name. Defaults to *source_schema* when
+        omitted (useful for version-to-version comparisons on the same table).
+    spark_session : SparkSession, optional
+        Active SparkSession. Required for all comparison methods.
+    """
+
+    def __init__(
+        self,
+        source_schema: str,
+        target_schema: Optional[str] = None,
+        spark_session: Optional["SparkSession"] = None,
+    ) -> None:
         self.source_schema = source_schema
         self.target_schema = target_schema if target_schema else source_schema
-        self.spark = SparkSession
-        self.return_type = return_type
+        self.spark = spark_session
 
-    
-    def read_schema(self,compare_version:Optional[str]=None):
-        if not compare_version:
-            source_Struct = self.spark.read.table(self.source_schema).schema
-            source_schema = self.spark.read.table(self.target_schema).schema
-            return source_schema,self.target_schema
-        else:
-            source_Struct = self.spark.read.table(self.source_schema).
-        
-    
-    def compare_delta_tables(self):
-        """
-        Compare schemas of two live Delta tables.
-        """
-        if PYSPARK_AVAILABLE:
-            source_Struct = self.read_schema(self.source_schema)
-            target_Struct = self.read_schema(self.target_schema)
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
-            result = check_schema_transfer(source_Struct,target_Struct)
-            comparison_report = format_result(result)
-            return comparison_report
+    def _read_schema(self, table: str, version: Optional[int] = None):
+        """
+        Return the StructType schema for *table*.
 
-        else:
-            return EnvironmentError("Pyspark Not installed.Please install Pyspark to proceed with delta table comparison")
-        
-    def compare_delta_versions(source_schema:str,source_version:int, target_schema:str,target_version:int, sparkSession:Optional[SparkSession]=None,return_type: Dict=None)->Dict:
+        Parameters
+        ----------
+        table : str
+            Fully-qualified table name.
+        version : int, optional
+            Delta version to read via ``versionAsOf``. Reads the latest
+            version when omitted.
         """
-        Compare schemas of the same Delta table 
-        at two different versions.
+        reader = self.spark.read.format("delta")
+        if version is not None:
+            reader = reader.option("versionAsOf", version)
+        return reader.table(table).schema
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def compare_delta_tables(self) -> str:
         """
-        pass
+        Compare the *current* schemas of ``source_schema`` and
+        ``target_schema``.
+
+        Returns
+        -------
+        str
+            Human-readable compatibility report.
+
+        Raises
+        ------
+        EnvironmentError
+            If PySpark is not installed.
+        """
+        if not PYSPARK_AVAILABLE:
+            raise EnvironmentError(
+                "PySpark is not installed. "
+                "Install it with: pip install schema-shield[spark]"
+            )
+
+        source_struct = self._read_schema(self.source_schema)
+        target_struct = self._read_schema(self.target_schema)
+
+        result = check_schema_transfer(source_struct, target_struct)
+        return format_result(result)
+
+    def compare_delta_versions(
+        self,
+        source_version: int,
+        target_version: int,
+    ) -> str:
+        """
+        Compare the schema of ``source_schema`` at two different Delta
+        versions.
+
+        This is useful for auditing schema drift across time on a single table,
+        or for validating a schema migration before promotion.
+
+        Parameters
+        ----------
+        source_version : int
+            The older (baseline) Delta version to compare from.
+        target_version : int
+            The newer Delta version to compare to.
+
+        Returns
+        -------
+        str
+            Human-readable compatibility report.
+
+        Raises
+        ------
+        EnvironmentError
+            If PySpark is not installed.
+        ValueError
+            If ``source_version`` or ``target_version`` is negative.
+        """
+        if not PYSPARK_AVAILABLE:
+            raise EnvironmentError(
+                "PySpark is not installed. "
+                "Install it with: pip install schema-shield[spark]"
+            )
+
+        if source_version < 0 or target_version < 0:
+            raise ValueError("Delta version numbers must be non-negative integers.")
+
+        source_struct = self._read_schema(self.source_schema, version=source_version)
+        target_struct = self._read_schema(self.target_schema, version=target_version)
+
+        result = check_schema_transfer(source_struct, target_struct)
+        return format_result(result)
