@@ -1,7 +1,10 @@
+import json
+import pytest
+
 from schema_guard.core.normalize import normalize_schema
 from schema_guard.core.compare import compare_schema
 from schema_guard.core.classify import classify_schema_diff
-import pytest
+from schema_guard.core.report import check_schema_transfer, format_result, compare_tables
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +127,16 @@ class TestClassifySchema:
         new_norm = normalize_schema(NEW_SCHEMA)
         diff = compare_schema(old_norm, new_norm)
         result = classify_schema_diff(diff, old_norm, new_norm)
-        assert result["safe"][0] == "Added nullable field : country"
+        # Must mention the field name and land in safe
+        assert any("country" in msg for msg in result["safe"])
+
+    def test_safe_message_format(self):
+        old_norm = normalize_schema(OLD_SCHEMA)
+        new_norm = normalize_schema(NEW_SCHEMA)
+        diff = compare_schema(old_norm, new_norm)
+        result = classify_schema_diff(diff, old_norm, new_norm)
+        safe_msg = next(m for m in result["safe"] if "country" in m)
+        assert "nullable" in safe_msg.lower()
 
     def test_classifies_removed_field_as_breaking(self):
         old_norm = normalize_schema(OLD_SCHEMA)
@@ -132,6 +144,35 @@ class TestClassifySchema:
         diff = compare_schema(old_norm, new_norm)
         result = classify_schema_diff(diff, old_norm, new_norm)
         assert any("mode" in msg for msg in result["breaking"])
+
+    def test_removed_field_message_format(self):
+        old = {"col": {"type": "string", "nullable": True}}
+        new = {}
+        old_norm = normalize_schema(old)
+        new_norm = {"__dummy__": {"type": "string", "nullable": True}}
+        diff = {"added": ["__dummy__"], "removed": ["col"], "type_changed": [], "nullable_changed": []}
+        result = classify_schema_diff(diff, old_norm, new_norm)
+        msg = next(m for m in result["breaking"] if "col" in m)
+        assert "Removed" in msg
+
+    def test_classifies_type_change_as_breaking(self):
+        old_norm = normalize_schema(OLD_SCHEMA)
+        new_norm = normalize_schema(NEW_SCHEMA)
+        diff = compare_schema(old_norm, new_norm)
+        result = classify_schema_diff(diff, old_norm, new_norm)
+        assert any("amount" in msg for msg in result["breaking"])
+
+    def test_type_change_message_uses_arrow(self):
+        old = {"col": {"type": "double", "nullable": True}}
+        new = {"col": {"type": "string", "nullable": True}}
+        old_norm = normalize_schema(old)
+        new_norm = normalize_schema(new)
+        diff = compare_schema(old_norm, new_norm)
+        result = classify_schema_diff(diff, old_norm, new_norm)
+        msg = next(m for m in result["breaking"] if "col" in m)
+        assert "→" in msg
+        assert "double" in msg
+        assert "string" in msg
 
     def test_classifies_nullable_true_to_false_as_breaking(self):
         old = {"col": {"type": "string", "nullable": True}}
@@ -142,6 +183,16 @@ class TestClassifySchema:
         result = classify_schema_diff(diff, old_norm, new_norm)
         assert any("col" in msg for msg in result["breaking"])
 
+    def test_nullable_tightened_message_uses_arrow(self):
+        old = {"col": {"type": "string", "nullable": True}}
+        new = {"col": {"type": "string", "nullable": False}}
+        old_norm = normalize_schema(old)
+        new_norm = normalize_schema(new)
+        diff = compare_schema(old_norm, new_norm)
+        result = classify_schema_diff(diff, old_norm, new_norm)
+        msg = next(m for m in result["breaking"] if "col" in m)
+        assert "→" in msg
+
     def test_classifies_nullable_false_to_true_as_warning(self):
         old = {"col": {"type": "string", "nullable": False}}
         new = {"col": {"type": "string", "nullable": True}}
@@ -151,6 +202,25 @@ class TestClassifySchema:
         result = classify_schema_diff(diff, old_norm, new_norm)
         assert any("col" in msg for msg in result["warnings"])
 
+    def test_nullable_relaxed_message_uses_arrow(self):
+        old = {"col": {"type": "string", "nullable": False}}
+        new = {"col": {"type": "string", "nullable": True}}
+        old_norm = normalize_schema(old)
+        new_norm = normalize_schema(new)
+        diff = compare_schema(old_norm, new_norm)
+        result = classify_schema_diff(diff, old_norm, new_norm)
+        msg = next(m for m in result["warnings"] if "col" in m)
+        assert "→" in msg
+
+    def test_non_nullable_added_field_is_breaking(self):
+        old = {"id": {"type": "string", "nullable": True}}
+        new = {"id": {"type": "string", "nullable": True}, "required_col": {"type": "string", "nullable": False}}
+        old_norm = normalize_schema(old)
+        new_norm = normalize_schema(new)
+        diff = compare_schema(old_norm, new_norm)
+        result = classify_schema_diff(diff, old_norm, new_norm)
+        assert any("required_col" in msg for msg in result["breaking"])
+
     def test_no_changes_returns_empty_lists(self):
         schema = normalize_schema({"id": {"type": "string", "nullable": True}})
         diff = compare_schema(schema, schema)
@@ -159,11 +229,8 @@ class TestClassifySchema:
 
 
 # ---------------------------------------------------------------------------
-# check_schema_transfer & format_result (integration)
+# check_schema_transfer & format_result — text format
 # ---------------------------------------------------------------------------
-
-from schema_guard.core.report import check_schema_transfer, format_result
-
 
 class TestSchemaTransfer:
 
@@ -173,27 +240,132 @@ class TestSchemaTransfer:
         assert result["schema_diff"]["removed"] == ["mode"]
         assert result["schema_diff"]["type_changed"][0]["field"] == "amount"
 
-    def test_format_result_contains_sections(self):
+    def test_format_text_contains_header(self):
         result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
         report = format_result(result)
-        assert "Transfer compatibility report" in report
+        assert "Schema Shield" in report
+        assert "Compatibility Report" in report
+
+    def test_format_text_contains_safe_section(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        report = format_result(result)
         assert "SAFE" in report
+
+    def test_format_text_contains_warnings_section(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        report = format_result(result)
         assert "WARNINGS" in report
+
+    def test_format_text_contains_breaking_section(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        report = format_result(result)
         assert "BREAKING" in report
 
-    def test_format_result_no_diff_message(self):
+    def test_format_text_shows_change_counts(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        report = format_result(result)
+        # Each section header should show a count in parentheses
+        assert "change" in report
+
+    def test_format_text_no_diff_message(self):
         schema = {"id": {"type": "string", "nullable": True}}
         result = check_schema_transfer(schema, schema)
         report = format_result(result)
-        assert "No schema differences detected." in report
+        assert "No schema differences detected" in report
+
+    def test_format_text_default_is_text(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        assert format_result(result) == format_result(result, output_format="text")
+
+
+# ---------------------------------------------------------------------------
+# format_result — json format
+# ---------------------------------------------------------------------------
+
+class TestFormatResultJson:
+
+    def test_returns_valid_json_string(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        output = format_result(result, output_format="json")
+        assert isinstance(output, str)
+        parsed = json.loads(output)
+        assert isinstance(parsed, dict)
+
+    def test_json_contains_schema_diff_key(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        parsed = json.loads(format_result(result, output_format="json"))
+        assert "schema_diff" in parsed
+
+    def test_json_contains_classification_key(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        parsed = json.loads(format_result(result, output_format="json"))
+        assert "classification" in parsed
+
+    def test_json_classification_has_all_buckets(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        parsed = json.loads(format_result(result, output_format="json"))
+        cls = parsed["classification"]
+        assert "safe" in cls
+        assert "warnings" in cls
+        assert "breaking" in cls
+
+    def test_json_diff_added_fields(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        parsed = json.loads(format_result(result, output_format="json"))
+        assert parsed["schema_diff"]["added"] == ["country"]
+
+    def test_json_no_diff_is_empty_lists(self):
+        schema = {"id": {"type": "string", "nullable": True}}
+        result = check_schema_transfer(schema, schema)
+        parsed = json.loads(format_result(result, output_format="json"))
+        cls = parsed["classification"]
+        assert cls["safe"] == []
+        assert cls["warnings"] == []
+        assert cls["breaking"] == []
+
+
+# ---------------------------------------------------------------------------
+# format_result — dict format
+# ---------------------------------------------------------------------------
+
+class TestFormatResultDict:
+
+    def test_returns_dict(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        output = format_result(result, output_format="dict")
+        assert isinstance(output, dict)
+
+    def test_dict_has_three_buckets(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        output = format_result(result, output_format="dict")
+        assert set(output.keys()) == {"safe", "warnings", "breaking"}
+
+    def test_dict_safe_list(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        output = format_result(result, output_format="dict")
+        assert isinstance(output["safe"], list)
+        assert any("country" in m for m in output["safe"])
+
+    def test_dict_breaking_contains_removed_field(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        output = format_result(result, output_format="dict")
+        assert any("mode" in m for m in output["breaking"])
+
+    def test_dict_no_diff_returns_empty_lists(self):
+        schema = {"id": {"type": "string", "nullable": True}}
+        result = check_schema_transfer(schema, schema)
+        output = format_result(result, output_format="dict")
+        assert output == {"safe": [], "warnings": [], "breaking": []}
+
+    def test_invalid_format_raises_value_error(self):
+        result = check_schema_transfer(OLD_SCHEMA, NEW_SCHEMA)
+        with pytest.raises(ValueError, match="Unsupported output_format"):
+            format_result(result, output_format="xml")
 
 
 # ---------------------------------------------------------------------------
 # compare_tables (Spark mock)
 # ---------------------------------------------------------------------------
-
-from schema_guard.core.report import compare_tables
-
 
 class TestCompareTables:
 
@@ -234,17 +406,35 @@ class TestCompareTables:
 
         return MockSpark()
 
-    def test_compare_tables_returns_classification(self):
+    def test_returns_dict_with_classification(self):
         spark = self._make_spark()
         result = compare_tables(spark, "dev.sales", "prod.sales")
         assert "classification" in result
 
-    def test_compare_tables_safe_count(self):
+    def test_returns_dict_with_schema_diff(self):
+        spark = self._make_spark()
+        result = compare_tables(spark, "dev.sales", "prod.sales")
+        assert "schema_diff" in result
+
+    def test_safe_count(self):
         spark = self._make_spark()
         result = compare_tables(spark, "dev.sales", "prod.sales")
         assert len(result["classification"]["safe"]) == 1
 
-    def test_compare_tables_breaking_count(self):
+    def test_breaking_count(self):
         spark = self._make_spark()
         result = compare_tables(spark, "dev.sales", "prod.sales")
         assert len(result["classification"]["breaking"]) == 1
+
+    def test_result_formattable_as_text(self):
+        spark = self._make_spark()
+        result = compare_tables(spark, "dev.sales", "prod.sales")
+        report = format_result(result, output_format="text")
+        assert "Schema Shield" in report
+
+    def test_result_formattable_as_json(self):
+        spark = self._make_spark()
+        result = compare_tables(spark, "dev.sales", "prod.sales")
+        output = format_result(result, output_format="json")
+        parsed = json.loads(output)
+        assert "classification" in parsed
