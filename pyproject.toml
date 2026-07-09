@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schema-shield"
-version = "1.0.0"
+version = "1.1.0"
 description = "Schema compatibility and transfer safety utility for data pipelines"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,6 +14,10 @@ authors = [
 license = { text = "MIT" }
 dependencies = ["click>=8.0", "rich>=13.0"]
 
+[project.optional-dependencies]
+spark = ["pyspark>=3.3"]
+databricks = ["databricks-sdk>=0.20", "pyspark>=3.3"]
+
 [project.scripts]
 schema-shield = "schema_shield.cli:main"
 
@@ -22,3 +26,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
