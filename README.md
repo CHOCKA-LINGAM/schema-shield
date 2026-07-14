@@ -203,7 +203,7 @@ format_result(result, output_format="dict")
 ## Contributing
 
 ```bash
-git clone https://github.com/chocka-dev/schema-guard
+git clone https://github.com/CHOCKA-LINGAM/schema-shield
 pip install -e ".[spark]"
 pytest
 ```
