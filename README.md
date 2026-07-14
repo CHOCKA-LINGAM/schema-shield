@@ -214,4 +214,4 @@ Pull requests are welcome. CI runs automatically on all PRs.
 
 ## License
 
-MIT © [chocka.dev](https://chocka.dev)
+MIT © [chocka.dev](https://chocka-devfolio.vercel.app)
