@@ -1,10 +1,10 @@
 import json
 import pytest
 
-from schema_guard.core.normalize import normalize_schema
-from schema_guard.core.compare import compare_schema
-from schema_guard.core.classify import classify_schema_diff
-from schema_guard.core.report import check_schema_transfer, format_result, compare_tables
+from schema_shield.core.normalize import normalize_schema
+from schema_shield.core.compare import compare_schema
+from schema_shield.core.classify import classify_schema_diff
+from schema_shield.core.report import check_schema_transfer, format_result, compare_tables
 
 
 # ---------------------------------------------------------------------------

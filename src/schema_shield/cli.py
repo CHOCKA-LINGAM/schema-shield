@@ -1,7 +1,7 @@
 import argparse
 import json
 
-from schema_guard.core.report import check_schema_transfer, format_result
+from schema_shield.core.report import check_schema_transfer, format_result
 
 
 def load_schema(file_path: str) -> dict:
@@ -14,7 +14,7 @@ def load_schema(file_path: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Schema Guard - validate schema compatibility and transfer safety"
+        description="Schema Shield - validate schema compatibility and transfer safety"
     )
 
     subparsers = parser.add_subparsers(dest="command")

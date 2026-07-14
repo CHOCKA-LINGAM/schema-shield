@@ -1,9 +1,9 @@
 # Schema Shield
 
-[![PyPI version](https://img.shields.io/pypi/v/schema-shield)](https://pypi.org/project/schema-shield/)
-[![Python](https://img.shields.io/pypi/pyversions/schema-shield)](https://pypi.org/project/schema-shield/)
-[![CI](https://github.com/chocka-dev/schema-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/chocka-dev/schema-guard/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI](https://img.shields.io/badge/PyPI-v1.1.0-blue?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/schema-shield/)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/schema-shield/)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square&logo=github-actions&logoColor=white)](https://github.com/CHOCKA-LINGAM/schema-shield/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square&logo=opensourceinitiative&logoColor=white)](LICENSE)
 
 **Schema Shield** classifies schema changes as SAFE, WARNING, or BREAKING — so you know immediately whether a schema evolution is safe to deploy.
 
@@ -41,7 +41,7 @@ pip install "schema-shield[databricks]"
 ## Quick Start
 
 ```python
-from schema_guard import check_schema_transfer, format_result
+from schema_shield import check_schema_transfer, format_result
 
 result = check_schema_transfer(old_schema, new_schema)
 print(format_result(result))
@@ -74,7 +74,7 @@ print(format_result(result))
 Pass schemas as Python dicts. Each field needs a `"type"` key; `"nullable"` defaults to `True`.
 
 ```python
-from schema_guard import check_schema_transfer, format_result
+from schema_shield import check_schema_transfer, format_result
 
 result = check_schema_transfer(old_schema, new_schema)
 
@@ -117,7 +117,7 @@ schema-shield compare old_schema.json new_schema.json
 Pass a live `SparkSession` and table names — Schema Shield reads the schemas for you:
 
 ```python
-from schema_guard import compare_tables, format_result
+from schema_shield import compare_tables, format_result
 
 result = compare_tables(spark, "dev.catalog.sales", "prod.catalog.sales")
 print(format_result(result))
@@ -132,7 +132,7 @@ You can also pass PySpark `StructType` objects directly into `check_schema_trans
 Use the `CompareDelta` adapter to compare live Delta tables or audit schema drift across Delta versions:
 
 ```python
-from schema_guard.adapters.delta import CompareDelta
+from schema_shield.adapters.delta import CompareDelta
 
 checker = CompareDelta(
     source_schema="catalog.schema.events",

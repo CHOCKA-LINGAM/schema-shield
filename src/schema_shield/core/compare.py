@@ -1,4 +1,4 @@
-from schema_guard.core.normalize import normalize_schema
+from schema_shield.core.normalize import normalize_schema
 
 def compare_schema(old_schema:dict, new_schema:dict)-> dict:
     """

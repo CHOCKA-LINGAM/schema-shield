@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import Literal, Union
 
-from schema_guard.core.normalize import normalize_schema
-from schema_guard.core.compare import compare_schema
-from schema_guard.core.classify import classify_schema_diff
+from schema_shield.core.normalize import normalize_schema
+from schema_shield.core.compare import compare_schema
+from schema_shield.core.classify import classify_schema_diff
 
 # Output format type alias
 OutputFormat = Literal["text", "json", "dict"]
