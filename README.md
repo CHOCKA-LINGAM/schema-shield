@@ -1,6 +1,6 @@
 # Schema Shield
 
-[![PyPI](https://img.shields.io/badge/PyPI-v1.1.0-blue?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/schema-shield/)
+[![PyPI](https://img.shields.io/badge/PyPI-v1.1.1-blue?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/schema-shield/)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/schema-shield/)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square&logo=github-actions&logoColor=white)](https://github.com/CHOCKA-LINGAM/schema-shield/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square&logo=opensourceinitiative&logoColor=white)](LICENSE)
